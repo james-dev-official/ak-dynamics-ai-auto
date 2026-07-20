@@ -1,0 +1,245 @@
+{
+  "name": "api-rag-chat-agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "eb6d15f7-e201-41a3-a280-145d82b7618e",
+      "name": "WH_chatQuery",
+      "webhookId": "184557f4-1459-416b-8684-460c7f75d0b1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are an intelligent customer support assistant. Answer the user's question strictly based on the provided context retrieved from the database tool. If the answer is not in the context, politely state that you do not have that information."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a6ed9333-9e8b-4194-a8db-5e3f07eddc44",
+      "name": "AG_ragBrain"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        208,
+        224
+      ],
+      "id": "af639a29-9ad7-45e7-b491-abe6e9cf6292",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "6PvjCHEM270xb690",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to search and retrieve relevant context, business information, and documents from the vector database."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        368
+      ],
+      "id": "d4d21729-0928-4c03-a300-ad32ef3d2792",
+      "name": "TOOL_vectorStore"
+    },
+    {
+      "parameters": {
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        576
+      ],
+      "id": "ba4d94d3-2ec4-48f1-a59d-f5dd911e23ba",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TAjgTMMwNfWBxsNv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        784
+      ],
+      "id": "db952433-412e-450a-8f90-b1e92a865fcc",
+      "name": "EMB_openai",
+      "credentials": {
+        "openAiApi": {
+          "id": "2mIm4W1uhTF1la0L",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"success\",\n  \"reply\": \"={{ $json.output }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        560,
+        0
+      ],
+      "id": "27442609-9b41-443b-b9a0-90d44a47b8b2",
+      "name": "RES_chatResponse"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        480,
+        560
+      ],
+      "id": "dc2f9345-022b-4fc3-b342-9152fc9b1954",
+      "name": "LM_toolBrain",
+      "credentials": {
+        "groqApi": {
+          "id": "6PvjCHEM270xb690",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WH_chatQuery": {
+      "main": [
+        [
+          {
+            "node": "AG_ragBrain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AG_ragBrain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TOOL_vectorStore": {
+      "ai_tool": [
+        [
+          {
+            "node": "AG_ragBrain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "TOOL_vectorStore",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EMB_openai": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AG_ragBrain": {
+      "main": [
+        [
+          {
+            "node": "RES_chatResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM_toolBrain": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "TOOL_vectorStore",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b937a08b-6d1f-40c7-9e51-ebb7a1bdbc27",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4dd33f43969f775b58ecd0fbf3852f408850b1f0027ca3553aa67ad5d6dc9ea9"
+  },
+  "nodeGroups": [],
+  "id": "RwyKpeJ1m87H0fID",
+  "tags": []
+}

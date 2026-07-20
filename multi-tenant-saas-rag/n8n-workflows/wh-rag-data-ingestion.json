@@ -1,0 +1,299 @@
+{
+  "name": "wh-rag-data-ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "WH_receiveData",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "64a2a616-dcb9-4539-a026-7de155783ed4",
+      "name": "WH_receiveData",
+      "webhookId": "3a45f389-28ec-4fbf-b720-82a89acbc750"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\n\nreturn {\n  json: {\n    tenant_id: body.tenant_id || \"default_tenant\",\n    bot_id: body.bot_id || \"default_bot\",\n    source_type: body.source_type || (body.url ? \"url\" : \"file\"), // \"url\", \"file\", or \"text\"\n    raw_text: body.text || null,\n    source_url: body.url || null,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "17252cc2-9e04-494f-927d-478ca376ec77",
+      "name": "CODE_formatPayload"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source_type }}",
+                    "rightValue": "url",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "661792e1-9cc1-4e2b-8667-5a6b6be63742"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Is URL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b32aa98c-ec96-4e76-8de0-5efacfa537ab",
+                    "leftValue": "={{ $json.source_type }}",
+                    "rightValue": "file",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Is File"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "339e47e3-0c18-4965-aa76-8f78d0b5b4ef",
+      "name": "SW_checkSourceType"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.source_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "edcd8f85-4906-4366-ba18-24e3279eb3ca",
+      "name": "HTTP_fetchUrl"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "ff3c6c69-b846-4a54-9536-1f3f4e1516d5",
+      "name": "EXT_extractText"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "fd4eaef9-df29-4dd3-bcbf-4e570207f2bb",
+      "name": "DB_saveVectors",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TAjgTMMwNfWBxsNv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1024,
+        192
+      ],
+      "id": "eb0b5206-186a-4e00-9957-356d3b95b5b2",
+      "name": "LOAD_documentData"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [
+        592,
+        -528
+      ],
+      "id": "e295088d-14da-49c3-a2fe-66c64db92a32",
+      "name": "EMB_openai-v2",
+      "credentials": {
+        "cohereApi": {
+          "id": "FjMNt5XUaNMxV2CV",
+          "name": "Cohere account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        192
+      ],
+      "id": "b9675c28-782a-41fb-a349-46888b113da0",
+      "name": "EMB_openai",
+      "credentials": {
+        "openAiApi": {
+          "id": "2mIm4W1uhTF1la0L",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WH_receiveData": {
+      "main": [
+        [
+          {
+            "node": "CODE_formatPayload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE_formatPayload": {
+      "main": [
+        [
+          {
+            "node": "SW_checkSourceType",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SW_checkSourceType": {
+      "main": [
+        [
+          {
+            "node": "HTTP_fetchUrl",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "EXT_extractText",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_fetchUrl": {
+      "main": [
+        [
+          {
+            "node": "DB_saveVectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LOAD_documentData": {
+      "ai_document": [
+        [
+          {
+            "node": "DB_saveVectors",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EMB_openai-v2": {
+      "ai_embedding": [
+        []
+      ]
+    },
+    "EMB_openai": {
+      "ai_embedding": [
+        [
+          {
+            "node": "DB_saveVectors",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e5945e37-6ae0-42f8-975e-da59b07736ae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4dd33f43969f775b58ecd0fbf3852f408850b1f0027ca3553aa67ad5d6dc9ea9"
+  },
+  "nodeGroups": [],
+  "id": "cTggPrPYPUkS9SDH",
+  "tags": []
+}
